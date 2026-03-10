@@ -8,18 +8,12 @@ import java.util.stream.Collectors;
 public class ProductAnalyticsService {
 
     public Optional<Product> findProductWithHighestRatingAndLowPrice(List<Product> productsList){
-        System.out.println("Comparator running...");
         return Optional.ofNullable(productsList)
                 .orElseGet(Collections::emptyList)
                 .stream()
-                .max((product1, product2) -> {
-                    System.out.println("Comparing: " + product1.productName() + " vs " + product2.productName());
-                    System.out.println("Ratings: " + product1.rating() + " vs " + product2.rating());
-                    int ratingComparison = Double.compare(product1.rating(), product2.rating());
-                    return ratingComparison == 0
-                            ? Double.compare(product2.price(), product1.price())
-                            : ratingComparison;
-                });
+                .max(Comparator.comparing(Product::rating).reversed() //4.8,4.5,4.0
+                        .thenComparing(Product::price) // 150,200,1200
+                        .reversed());//4.0,4.5,4.8 -- if rating same then price will also reverse
     }
 
 
