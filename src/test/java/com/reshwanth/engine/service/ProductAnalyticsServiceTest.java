@@ -24,7 +24,7 @@ public class ProductAnalyticsServiceTest {
         assertEquals(4.8, result.get().rating());
 
         List<Product> productListWithSameRating = List.of(
-                new Product(101, "Laptop", "Electronics", 1200.00, 4.5, LocalDate.of(2023, 1, 10)),
+                new Product(101, "Laptop", "Electronics", 1200.00, 4.8, LocalDate.of(2023, 1, 10)),
                 new Product(102, "Chair", "Furniture", 150.00, 4.8, LocalDate.of(2022, 11, 5)),
                 new Product(103, "Headphones", "Electronics", 200.00, 4.8, LocalDate.of(2023, 2, 20)));
         var result1 = ps.findProductWithHighestRatingAndLowPrice(productListWithSameRating);
