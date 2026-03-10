@@ -39,6 +39,24 @@ public class ProductAnalyticsServiceTest {
         var result3 = ps.findProductWithHighestRatingAndLowPrice(null);
         assertTrue(result3.isEmpty());
 
+        List<Product> productsList = List.of(
+                new Product(101, "Laptop", "Electronics", 1200.00, 4.5, LocalDate.of(2023, 1, 10)),
+                new Product(102, "Chair", "Furniture", 150.00, 3.6, LocalDate.of(2022, 11, 5)),
+                new Product(103, "Headphones", "Electronics", 200.00, 4.8, LocalDate.of(2023, 2, 20)));
 
+        var result4 = ps.findBestValueForMoneyProduct(productsList);
+        assertEquals(103, result4.get().productId());
+
+        List<Product> productsListLimit = List.of(
+                new Product(101, "Laptop", "Electronics", 1200.00, 4.5, LocalDate.of(2023, 1, 10)),
+                new Product(102, "Chair", "Furniture", 150.00, 4.3, LocalDate.of(2022, 11, 5)),
+                new Product(103, "Headphones", "Electronics", 200.00, 4.8, LocalDate.of(2023, 2, 20)),
+                new Product(104, "Desk", "Furniture", 300.00, 3.9, LocalDate.of(2021, 9, 15)),
+                new Product(105, "Monitor", "Electronics", 400.00, 4.3, LocalDate.of(2022, 5, 1))
+        );
+
+        var result5 = ps.findTopThreeRatedProducts(productsListLimit);
+        assertEquals(3, result5.size());
+        assertTrue(result5.contains(productsListLimit.get(1)));
     }
 }
