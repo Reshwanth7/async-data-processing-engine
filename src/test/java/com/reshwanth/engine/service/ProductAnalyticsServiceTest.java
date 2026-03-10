@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -59,4 +60,69 @@ public class ProductAnalyticsServiceTest {
         assertEquals(3, result5.size());
         assertTrue(result5.contains(productsListLimit.get(1)));
     }
+
+    @Test
+    void testCategoryWiseSorting_MultipleCategories() {
+        ProductAnalyticsService ps = new ProductAnalyticsService();
+        List<Product> productsListLimit = List.of(
+                new Product(101, "Laptop", "Electronics", 1200.00, 4.3, LocalDate.of(2023, 1, 10)),
+                new Product(102, "Chair", "Furniture", 150.00, 4.3, LocalDate.of(2022, 11, 5)),
+                new Product(103, "Headphones", "Electronics", 200.00, 4.8, LocalDate.of(2023, 2, 20)),
+                new Product(104, "Desk", "Furniture", 300.00, 3.9, LocalDate.of(2021, 9, 15)),
+                new Product(105, "Monitor", "Electronics", 400.00, 4.3, LocalDate.of(2022, 5, 1))
+        );
+
+        Map<String, List<Product>> result = ps.groupProductsByCategoryAndSortByRating(productsListLimit);
+
+        assertEquals(2, result.size());
+
+        List<Product> electronics = result.get("Electronics");
+        assertEquals("Headphones", electronics.get(0).productName()); // highest rating first
+        assertEquals("Monitor", electronics.get(1).productName()); // highest rating first
+
+
+    }
+
+    @Test
+    void testFindLatestProductAddedByCategory_WithGivenDataset() {
+        ProductAnalyticsService ps = new ProductAnalyticsService();
+
+        List<Product> productsListLimit = List.of(
+                new Product(101, "Laptop", "Electronics", 1200.00, 4.3, LocalDate.of(2023, 1, 10)),
+                new Product(102, "Chair", "Furniture", 150.00, 4.3, LocalDate.of(2022, 11, 5)),
+                new Product(103, "Headphones", "Electronics", 200.00, 4.8, LocalDate.of(2023, 2, 20)),
+                new Product(104, "Desk", "Furniture", 300.00, 3.9, LocalDate.of(2021, 9, 15)),
+                new Product(105, "Monitor", "Electronics", 400.00, 4.3, LocalDate.of(2022, 5, 1))
+        );
+
+        Map<String, Product> result = ps.findLatestProductAddedByCategory(productsListLimit);
+
+        assertEquals(2, result.size());
+
+        assertEquals("Headphones", result.get("Electronics").productName());
+        assertEquals("Chair", result.get("Furniture").productName());
+    }
+
+    @Test
+    void testFindAverageRatingsPerCategory_WithGivenDataset() {
+        ProductAnalyticsService ps = new ProductAnalyticsService();
+
+        List<Product> productsListLimit = List.of(
+                new Product(101, "Laptop", "Electronics", 1200.00, 4.3, LocalDate.of(2023, 1, 10)),
+                new Product(102, "Chair", "Furniture", 150.00, 4.3, LocalDate.of(2022, 11, 5)),
+                new Product(103, "Headphones", "Electronics", 200.00, 4.8, LocalDate.of(2023, 2, 20)),
+                new Product(104, "Desk", "Furniture", 300.00, 3.9, LocalDate.of(2021, 9, 15)),
+                new Product(105, "Monitor", "Electronics", 400.00, 4.3, LocalDate.of(2022, 5, 1))
+        );
+
+        Map<String, Double> result = ps.findAverageRatingsPerCategory(productsListLimit);
+
+        assertEquals(2, result.size());
+
+        assertEquals(4.47, result.get("Electronics"));
+        assertEquals(4.10, result.get("Furniture"));
+    }
+
+
+
 }
