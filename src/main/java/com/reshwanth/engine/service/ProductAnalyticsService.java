@@ -3,6 +3,7 @@ package com.reshwanth.engine.service;
 import com.reshwanth.engine.model.Product;
 
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class ProductAnalyticsService {
@@ -63,6 +64,7 @@ public class ProductAnalyticsService {
        return Optional.ofNullable(productsList)
                 .orElseGet(Collections::emptyList)
                 .stream()
+                .filter(p -> p.price() > 0)
                 .max(Comparator.comparingDouble((Product p) -> p.rating() / p.price())
                         .thenComparing(Product::addedDate));
 
@@ -106,10 +108,11 @@ public class ProductAnalyticsService {
                         ),
                         map->map.entrySet()
                                 .stream()
+                                .filter(e -> e.getValue().isPresent())
                                 .collect(
                                         Collectors.toMap(
                                                 Map.Entry::getKey,
-                                                e -> e.getValue().orElse(null)
+                                                e -> e.getValue().get()
                                         )
                                 )
 
@@ -138,5 +141,104 @@ public class ProductAnalyticsService {
                 ));
 
     }
+
+    //Use Cases Day 3
+    public Set<String> findAllUniqueTags(List<Product> productList){
+        return Optional.ofNullable(productList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .map(Product::productTags)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet());
+
+    }
+
+    public Map<Boolean, List<Product>> partitionProductsByRating(List<Product> productList){
+        return Optional.ofNullable(productList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .collect(Collectors.partitioningBy(product -> product.rating()>= 4.5));
+    }
+
+    public Map<String, Map<String, List<Product>>> groupProductsByCategoryAndPriceRange(List<Product> productList) {
+        return Optional.ofNullable(productList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .collect(Collectors.groupingBy(Product::category
+                        , Collectors.groupingBy(product ->
+                                {
+                                    if(product.price() < 200) return "LOW";
+                                    if(product.price() < 500) return "MEDIUM";
+                                    return "HIGH";
+                                }
+                                )));
+    }
+
+    public Map<String, DoubleSummaryStatistics> summarizePriceByCategory(List<Product> productList){
+        return Optional.ofNullable(productList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .collect(Collectors.groupingBy(Product::category,
+                        Collectors.summarizingDouble(Product::price)
+                ));
+    }
+
+    public Map<String, Product> findMostExpensiveProductByCategory(List<Product> productList){
+        return Optional.ofNullable(productList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .collect(Collectors.collectingAndThen(Collectors.groupingBy(Product::category,
+                        Collectors.reducing((product1,product2) ->
+                        {
+                            if(product1.price() > product2.price())
+                                return product1;
+                            else
+                                return product2;
+                        })
+                ),
+                   map -> map.entrySet()
+                           .stream()
+      .filter(e -> e.getValue().isPresent())
+                           .collect(
+                                   Collectors.toMap(
+                                           Map.Entry::getKey,
+                                           e -> e.getValue().get()
+                                   )
+                           )
+                ));
+
+    }
+
+    public Optional<Product> findFirstMatchingProduct(List<Product> productList){
+        return Optional.ofNullable(productList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .filter(product -> product.category().equals("Electronics"))
+                .filter(product -> product.price()<=500.0)
+                .filter(product -> product.rating()>=4.5)
+                .findFirst();
+    }
+
+
+    public List<Product> filterProducts(List<Product> productList, Predicate<Product> predicate){
+        return Optional.ofNullable(productList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .filter(predicate)
+                .toList();
+    }
+
+    public List<Product> filterWithCombinedPredicates(List<Product> productList, Predicate<Product> p1, Predicate<Product> p2, Predicate<Product> p3){
+        return Optional.ofNullable(productList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .peek( p -> System.out.println("Before"+p))
+                .filter((p1.and(p2)).or(p3.negate()))
+                .peek( p -> System.out.println("After"+p))
+                .toList();
+    }
+
+
+
 
 }
