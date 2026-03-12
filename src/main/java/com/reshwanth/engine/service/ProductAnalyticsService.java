@@ -1,8 +1,13 @@
 package com.reshwanth.engine.service;
 
-import com.reshwanth.engine.model.Product;
+import com.reshwanth.engine.DTO.CategoryPriceStats;
+import com.reshwanth.engine.DTO.EnrichedProductDTO;
+import com.reshwanth.engine.DTO.ProductDashboardSummary;
+import com.reshwanth.engine.DTO.ProductSummaryDTO;
+import com.reshwanth.engine.model.*;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -198,7 +203,7 @@ public class ProductAnalyticsService {
                 ),
                    map -> map.entrySet()
                            .stream()
-      .filter(e -> e.getValue().isPresent())
+                           .filter(e -> e.getValue().isPresent())
                            .collect(
                                    Collectors.toMap(
                                            Map.Entry::getKey,
@@ -232,13 +237,171 @@ public class ProductAnalyticsService {
         return Optional.ofNullable(productList)
                 .orElseGet(Collections::emptyList)
                 .stream()
-                .peek( p -> System.out.println("Before"+p))
                 .filter((p1.and(p2)).or(p3.negate()))
-                .peek( p -> System.out.println("After"+p))
                 .toList();
     }
 
+    //Day 4
+    public List<ProductSummaryDTO> productSummaryDTOList(List<Product> productList){
+        return Optional.ofNullable(productList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .filter(product -> product.price() >= 100)
+                .filter(product -> product.rating() >= 4.0)
+                .filter(product -> !"Grocery".equals(product.category()))
+                .filter(product -> product.productTags() != null && !product.productTags().isEmpty())
+                .filter(product -> product.addedDate() != null)
+                .sorted(Comparator.comparing(Product::rating).reversed()
+                        .thenComparing(Product::price)
+                        .thenComparing(Product::productName))
+                .limit(5)
+                .map(product -> new ProductSummaryDTO(product.productId(),product.productName(),product.category()
+                ,product.price(), product.rating(), product.addedDate().getMonth(),product.productTags().size()))
+                .toList();
+    }
+
+    public Map<String, Map<String, CategoryPriceStats>> groupByCategoryOfCategoryStats(List<Product> productList){
+        return Optional.ofNullable(productList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .filter(product -> product.category() != null && !product.category().isEmpty())
+                .filter(product -> product.price()>=0)
+                .filter(product -> product.addedDate() != null)
+                .collect(Collectors.collectingAndThen(Collectors.groupingBy(
+                        Product::category,
+                        Collectors.groupingBy(this::priceCategory,
+                       Collectors.summarizingDouble(Product::price)
+                        )),
+                       map -> map.entrySet()
+                               .stream()
+                               .collect(
+                                       Collectors.toMap(
+                                               Map.Entry::getKey,
+                                                e ->e.getValue().entrySet()
+                                                        .stream()
+                                                        .collect(
+                                                                Collectors.toMap(
+                                                                        Map.Entry::getKey,
+                                                                        d -> new CategoryPriceStats(d.getValue().getCount(),d.getValue().getMin(),
+                                                                                d.getValue().getMax(),d.getValue().getAverage())
+                                                                )
+                                                        )
+                                               )
+                                       )
+                               )
+
+                );
+
+    }
+
+    public String priceCategory(Product product) {
+        return Optional.ofNullable(product)
+                .map(p -> {
+                    if (p.price() < 200) return "LOW";
+                    if (p.price() <= 500) return "MEDIUM";
+                    return "HIGH";
+                })
+                .orElse(null);
+    }
 
 
+    public List<EnrichedProductDTO> enrichedProductDTOList(List<Product> productList){
 
+        Predicate<Product> isElectronics = p -> "Electronics".equals(p.category());
+        Predicate<Product> isHighRating = p -> p.rating() >= 4.5;
+        Predicate<Product> isPremium = p -> p.rating() >= 4.5 && p.price() >= 300 && !"Grocery".equals(p.category());
+        Predicate<Product> isHighPrice = p -> p.price() >= 500;
+
+        Function<Product, Double> discountedPriceFn = p -> {
+            boolean electronicsDiscount = isElectronics.and(isHighPrice).test(p);
+            boolean ratingDiscount = isHighRating.test(p);
+
+            if (electronicsDiscount) {
+                return p.price() - (p.price() * 10 / 100);
+            }
+            if (ratingDiscount) {
+                return p.price() - (p.price() * 5 / 100);
+            }
+            return p.price();
+        };
+
+        return Optional.ofNullable(productList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .filter(p -> p.productName() != null && !p.productName().isEmpty())
+                .filter(p -> p.price() >= 0)
+                .filter(p -> p.rating() >= 0)
+                .filter(p -> p.addedDate() != null)
+                .filter(p -> p.productTags() != null && !p.productTags().isEmpty())
+                .map(p -> new EnrichedProductDTO(
+                        p.productId(),
+                        p.productName(),
+                        p.category(),
+                        p.price(),
+                        p.rating(),
+                        (isElectronics.and(isHighPrice)).or(isHighRating).test(p),
+                        discountedPriceFn.apply(p),
+                        priceCategory(p),
+                        p.addedDate().getMonth(),
+                        p.productTags().size(),
+                        isPremium.test(p)
+                ))
+                .sorted(
+                        Comparator.comparing(EnrichedProductDTO::isPremiumProduct)
+                                .thenComparing(EnrichedProductDTO::rating).reversed()
+                                .thenComparing(EnrichedProductDTO::discountedPrice)
+                )
+                .toList();
+    }
+
+    public ProductDashboardSummary getProductDashBoard(List<Product> productList){
+        List<Product> filteredList = filteredProductList(productList);
+        long countOfProducts = filteredList.size();
+        double averagePrice = filteredList
+                .stream()
+                .collect(Collectors.averagingDouble(Product::price));
+        double averageRating = filteredList
+                .stream()
+                .collect(Collectors.averagingDouble(Product::rating));
+        Map<String, Long> categoryCounts = filteredList
+                .stream()
+                .collect(Collectors.groupingBy(Product::category,Collectors.counting()));
+        Map<String, Long> priceBucketCounts = filteredList
+                .stream()
+                .collect(Collectors.groupingBy(this::priceCategory,Collectors.counting()));
+
+        List<ProductSummaryDTO> topRatedProducts = filteredList
+                .stream()
+                .sorted(Comparator.comparing(Product::rating).reversed()
+                        .thenComparing(Product::price))
+                .limit(3)
+                .map(product -> new ProductSummaryDTO(product.productId(),product.productName(),product.category()
+                        ,product.price(), product.rating(), product.addedDate().getMonth(),product.productTags().size()))
+                .toList();
+
+        long premiumProductCount = filteredList
+                .stream()
+                .filter(product -> product.rating()>= 4.5 && product.price()>=300 && !"Grocery".equals(product.category()))
+                .count();
+        String mostCommonCategory = categoryCounts.isEmpty() ? null : categoryCounts.entrySet()
+                .stream()
+                .max(Comparator.comparing(Map.Entry::getValue))
+                .map(Map.Entry::getKey)
+                .orElse(null);
+
+        return new ProductDashboardSummary(countOfProducts,averagePrice,averageRating,categoryCounts,priceBucketCounts,topRatedProducts,premiumProductCount,mostCommonCategory);
+
+    }
+
+    public List<Product> filteredProductList(List<Product> productList){
+        return Optional.ofNullable(productList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .filter(p -> p.productName() != null && !p.productName().isEmpty())
+                .filter(p -> p.price() >= 0)
+                .filter(p -> p.rating() >= 0)
+                .filter(p -> p.addedDate() != null)
+                .filter(p -> p.productTags() != null && !p.productTags().isEmpty())
+                .toList();
+    }
 }

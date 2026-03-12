@@ -1,6 +1,10 @@
 package com.reshwanth.engine.service;
 
-import com.reshwanth.engine.model.Product;
+import com.reshwanth.engine.DTO.CategoryPriceStats;
+import com.reshwanth.engine.DTO.EnrichedProductDTO;
+import com.reshwanth.engine.DTO.ProductDashboardSummary;
+import com.reshwanth.engine.DTO.ProductSummaryDTO;
+import com.reshwanth.engine.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -312,5 +316,142 @@ public class ProductAnalyticsServiceTest {
 
         // p3 (premium) but price>500 → p3 excluded
         assertFalse(result.contains(p3));
+    }
+
+    //Day 4
+    @Test
+    void testFiltersAndSortingAndLimit() {
+        var service = new ProductAnalyticsService();
+        List<Product> products = List.of(
+                new Product(1, "A", "Electronics", 150, 4.5, LocalDate.of(2024, 1, 10), List.of("tag1")),
+                new Product(2, "B", "Grocery", 200, 5.0, LocalDate.of(2024, 2, 10), List.of("tag1")),
+                new Product(3, "C", "Furniture", 300, 4.0, LocalDate.of(2024, 3, 10), List.of("tag1")),
+                new Product(4, "D", "Electronics", 500, 4.8, LocalDate.of(2024, 4, 10), List.of("tag1")),
+                new Product(5, "E", "Electronics", 600, 4.9, LocalDate.of(2024, 5, 10), List.of("tag1")),
+                new Product(6, "F", "Electronics", 700, 4.7, LocalDate.of(2024, 6, 10), List.of("tag1"))
+        );
+
+        List<ProductSummaryDTO> result = service.productSummaryDTOList(products);
+
+        assertEquals(5, result.size());
+        assertEquals("E", result.get(0).productName()); // highest rating
+        assertEquals("D", result.get(1).productName());
+    }
+
+    @Test
+    void testNullListReturnsEmpty() {
+        var service = new ProductAnalyticsService();
+        assertTrue(service.productSummaryDTOList(null).isEmpty());
+    }
+
+    @Test
+    void testNullTagsAreFilteredOut() {
+        var service = new ProductAnalyticsService();
+        List<Product> products = List.of(
+                new Product(1, "A", "Electronics", 150, 4.5, LocalDate.now(), null)
+        );
+
+        assertTrue(service.productSummaryDTOList(products).isEmpty());
+    }
+
+
+    @Test
+    void testGroupingAndStats() {
+        var service = new ProductAnalyticsService();
+        List<Product> products = List.of(
+                new Product(1, "A", "Electronics", 100, 4.0, LocalDate.now(), List.of("t")),
+                new Product(2, "B", "Electronics", 300, 4.0, LocalDate.now(), List.of("t")),
+                new Product(3, "C", "Furniture", 600, 4.0, LocalDate.now(), List.of("t"))
+        );
+
+        Map<String, Map<String, CategoryPriceStats>> result =
+                service.groupByCategoryOfCategoryStats(products);
+
+        assertEquals(2, result.size());
+        assertEquals(2, result.get("Electronics").size());
+        assertEquals(1, result.get("Furniture").size());
+
+        CategoryPriceStats high = result.get("Furniture").get("HIGH");
+        assertEquals(1, high.count());
+        assertEquals(600, high.minPrice());
+    }
+
+    @Test
+    void testInvalidProductsAreSkipped() {
+        var service = new ProductAnalyticsService();
+        List<Product> products = List.of(
+                new Product(1, "A", null, 100, 4.0, LocalDate.now(), List.of("t")),
+                new Product(2, "B", "Electronics", -10, 4.0, LocalDate.now(), List.of("t"))
+        );
+
+        assertTrue(service.groupByCategoryOfCategoryStats(products).isEmpty());
+    }
+
+    @Test
+    void testDiscountLogic() {
+        var service = new ProductAnalyticsService();
+        Product p1 = new Product(1, "A", "Electronics", 600, 4.0, LocalDate.now(), List.of("t"));
+        Product p2 = new Product(2, "B", "Furniture", 400, 4.6, LocalDate.now(), List.of("t"));
+
+        List<EnrichedProductDTO> result = service.enrichedProductDTOList(List.of(p1, p2));
+
+        EnrichedProductDTO e1 = result.stream().filter(e -> e.productId() == 1).findFirst().get();
+        EnrichedProductDTO e2 = result.stream().filter(e -> e.productId() == 2).findFirst().get();
+
+        assertEquals(540, e1.discountedPrice()); // 10%
+        assertEquals(380, e2.discountedPrice()); // 5%
+    }
+
+    @Test
+    void testPremiumProductLogic() {
+        var service = new ProductAnalyticsService();
+        Product p = new Product(1, "A", "Electronics", 400, 4.6, LocalDate.now(), List.of("t"));
+
+        EnrichedProductDTO dto = service.enrichedProductDTOList(List.of(p)).get(0);
+
+        assertTrue(dto.isPremiumProduct());
+    }
+
+    @Test
+    void testSortingOrder() {
+        var service = new ProductAnalyticsService();
+        Product p1 = new Product(1, "A", "Electronics", 600, 4.6, LocalDate.now(), List.of("t"));
+        Product p2 = new Product(2, "B", "Electronics", 200, 4.9, LocalDate.now(), List.of("t"));
+
+        List<EnrichedProductDTO> result = service.enrichedProductDTOList(List.of(p1, p2));
+
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.get(0).productId()); // premium first
+    }
+
+    @Test
+    void testDashboardSummary() {
+        var service = new ProductAnalyticsService();
+        List<Product> products = List.of(
+                new Product(1, "A", "Electronics", 600, 4.6, LocalDate.now(), List.of("t")),
+                new Product(2, "B", "Furniture", 300, 4.0, LocalDate.now(), List.of("t")),
+                new Product(3, "C", "Electronics", 150, 3.5, LocalDate.now(), List.of("t"))
+        );
+
+        ProductDashboardSummary summary = service.getProductDashBoard(products);
+
+        assertEquals(3, summary.totalProducts());
+        assertEquals(2, summary.categoryCounts().get("Electronics"));
+        assertEquals(1, summary.priceBucketCounts().get("LOW"));
+        assertEquals(1, summary.premiumProductCount());
+        assertEquals("Electronics", summary.mostCommonCategory());
+        assertEquals(3, summary.topRatedProducts().size());
+    }
+
+    @Test
+    void testEmptyInput() {
+        var service = new ProductAnalyticsService();
+        ProductDashboardSummary summary = service.getProductDashBoard(null);
+
+        assertEquals(0, summary.totalProducts());
+        assertTrue(summary.categoryCounts().isEmpty());
+        assertTrue(summary.priceBucketCounts().isEmpty());
+        assertTrue(summary.topRatedProducts().isEmpty());
+        assertNull(summary.mostCommonCategory());
     }
 }
