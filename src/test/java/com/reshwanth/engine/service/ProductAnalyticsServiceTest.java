@@ -379,12 +379,17 @@ public class ProductAnalyticsServiceTest {
     @Test
     void testInvalidProductsAreSkipped() {
         var service = new ProductAnalyticsService();
+        var optimizedService = new OptimizedProductService();
         List<Product> products = List.of(
                 new Product(1, "A", null, 100, 4.0, LocalDate.now(), List.of("t")),
-                new Product(2, "B", "Electronics", -10, 4.0, LocalDate.now(), List.of("t"))
+                new Product(2, "B", "Electronics", -10, 4.0, LocalDate.now(), List.of("t")),
+                new Product(3, "C", "Electronics", 600, 4.9, LocalDate.now(), List.of("t")),
+                new Product(4, "C", "Electronics", 100, 4.9, LocalDate.now(), List.of("t")),
+                new Product(5, "D", "Furniture", 400, 4.9, LocalDate.now(), List.of("t"))
         );
 
-        assertTrue(service.groupByCategoryOfCategoryStats(products).isEmpty());
+        assertFalse(service.groupByCategoryOfCategoryStats(products).isEmpty());
+        assertFalse(optimizedService.groupByCategoryOfCategoryStats(products).isEmpty());
     }
 
     @Test

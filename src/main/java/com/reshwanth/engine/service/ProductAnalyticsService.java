@@ -269,7 +269,7 @@ public class ProductAnalyticsService {
                 .filter(product -> product.addedDate() != null)
                 .collect(Collectors.collectingAndThen(Collectors.groupingBy(
                         Product::category,
-                        Collectors.groupingBy(this::priceCategory,
+                        Collectors.groupingBy(ProductAnalyticsService::priceCategory,
                        Collectors.summarizingDouble(Product::price)
                         )),
                        map -> map.entrySet()
@@ -294,15 +294,7 @@ public class ProductAnalyticsService {
 
     }
 
-    public String priceCategory(Product product) {
-        return Optional.ofNullable(product)
-                .map(p -> {
-                    if (p.price() < 200) return "LOW";
-                    if (p.price() <= 500) return "MEDIUM";
-                    return "HIGH";
-                })
-                .orElse(null);
-    }
+
 
 
     public List<EnrichedProductDTO> enrichedProductDTOList(List<Product> productList){
@@ -368,7 +360,7 @@ public class ProductAnalyticsService {
                 .collect(Collectors.groupingBy(Product::category,Collectors.counting()));
         Map<String, Long> priceBucketCounts = filteredList
                 .stream()
-                .collect(Collectors.groupingBy(this::priceCategory,Collectors.counting()));
+                .collect(Collectors.groupingBy(ProductAnalyticsService::priceCategory,Collectors.counting()));
 
         List<ProductSummaryDTO> topRatedProducts = filteredList
                 .stream()
@@ -403,5 +395,15 @@ public class ProductAnalyticsService {
                 .filter(p -> p.addedDate() != null)
                 .filter(p -> p.productTags() != null && !p.productTags().isEmpty())
                 .toList();
+    }
+
+    public static String priceCategory(Product product) {
+        return Optional.ofNullable(product)
+                .map(p -> {
+                    if (p.price() < 200) return "LOW";
+                    if (p.price() <= 500) return "MEDIUM";
+                    return "HIGH";
+                })
+                .orElse(null);
     }
 }
