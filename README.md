@@ -16,7 +16,7 @@ src/test/java/com.reshwanth.engine/
   service/       → Tests for synchronous analytics
   
 
-Tech Stack
+Tech Stack:
 Java 17+
 CompletableFuture for async pipelines
 Streams & Collectors for analytics
@@ -24,7 +24,7 @@ Custom thread pools for concurrency control
 JUnit 5 for testing
 Maven for build and dependency management
 
-Features
+Features:
 Multi‑level grouping and aggregation
 Custom collectors for domain‑specific analytics
 Performance‑optimized stream pipelines
@@ -34,7 +34,7 @@ Non‑blocking analytics pipeline
 Timeout and fallback handling
 Clean, immutable DTO design
 
-Async Pipeline Flow
+Async Pipeline Flow:
 fetchProductAsync(productId)
       ↓
 transformProductAsync(product)
@@ -45,7 +45,7 @@ computeAnalyticsAsync(product, enrichment)
       ↓
 combine into AsyncEnrichedAnalyticsDTO
 
-Sample Output (AsyncEnrichedAnalyticsDTO)
+Sample Output (AsyncEnrichedAnalyticsDTO):
 {
   "productId": 101,
   "productName": "LAPTOP PRO",
@@ -61,13 +61,13 @@ Sample Output (AsyncEnrichedAnalyticsDTO)
   "processedTimestamp": "2026-03-14T11:45:00"
 }
 
-Performance Notes
+Performance Notes:
 All enrichment calls run in parallel using a custom thread pool
 No blocking inside the pipeline (only at the final .join() wrapper)
 Stream operations are fused and optimized
 Primitive streams reduce boxing overhead
 Timeouts prevent slow external calls from blocking the system
 
-How to Run
+How to Run:
 mvn clean install
 mvn test
