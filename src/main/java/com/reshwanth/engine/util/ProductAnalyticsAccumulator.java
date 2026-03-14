@@ -1,7 +1,7 @@
 package com.reshwanth.engine.util;
 
-import com.reshwanth.engine.DTO.ProductAggregateStats;
-import com.reshwanth.engine.DTO.ProductSummaryDTO;
+import com.reshwanth.engine.dto.ProductAggregateStats;
+import com.reshwanth.engine.dto.ProductSummaryDTO;
 import com.reshwanth.engine.model.Product;
 import com.reshwanth.engine.service.OptimizedProductService;
 

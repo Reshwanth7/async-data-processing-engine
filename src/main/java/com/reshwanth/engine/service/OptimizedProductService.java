@@ -1,13 +1,17 @@
 package com.reshwanth.engine.service;
 
-import com.reshwanth.engine.DTO.CategoryPriceStats;
-import com.reshwanth.engine.DTO.ProductAggregateStats;
-import com.reshwanth.engine.DTO.ProductDashboardSummary;
-import com.reshwanth.engine.DTO.ProductSummaryDTO;
+import com.reshwanth.engine.dto.CategoryPriceStats;
+import com.reshwanth.engine.dto.ProductAggregateStats;
+import com.reshwanth.engine.dto.ProductDashboardSummary;
+import com.reshwanth.engine.dto.ProductSummaryDTO;
 import com.reshwanth.engine.model.Product;
+import com.reshwanth.engine.util.EngineConstants;
 
+import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -15,7 +19,9 @@ import static com.reshwanth.engine.util.ProductAnalyticsAccumulator.productStats
 
 public class OptimizedProductService {
     //Day 5
-    Predicate<Product> productPredicate = product -> product.price() >= 100 && product.rating() >= 4.0 && !"Grocery".equals(product.category())
+    Predicate<Product> productPredicate = product -> product.price() >= EngineConstants.Thresholds.SUMMARY_MIN_PRICE
+            && product.rating() >= EngineConstants.Thresholds.SUMMARY_MIN_RATING
+            && !EngineConstants.Categories.GROCERY.equals(product.category())
            && product.productName() != null && !product.productName().isEmpty()
             && product.productTags() != null && !product.productTags().isEmpty() && product.addedDate() != null;
 
@@ -24,12 +30,17 @@ public class OptimizedProductService {
             .thenComparing(Product::productName));
 
     Predicate<Product> productFilterPredicate = p -> p.productName() != null && !p.productName().isEmpty()
-            && p.price() >= 0 && p.rating() >= 0 && p.addedDate() != null && p.productTags() != null && !p.productTags().isEmpty();
+            && p.price() >= EngineConstants.Thresholds.MIN_VALID_VALUE
+            && p.rating() >= EngineConstants.Thresholds.MIN_VALID_VALUE
+            && p.addedDate() != null && p.productTags() != null && !p.productTags().isEmpty();
 
 
-    Predicate<Product> productCategoryPredicate = p -> p.price() >= 0 && p.addedDate() != null &&  p.category() != null && !p.category().isEmpty();
+    Predicate<Product> productCategoryPredicate = p -> p.price() >= EngineConstants.Thresholds.MIN_VALID_VALUE
+            && p.addedDate() != null &&  p.category() != null && !p.category().isEmpty();
 
-    public static Predicate<Product> isPremium = product -> product.rating()>= 4.5 && product.price()>=300 && !"Grocery".equals(product.category());
+    public static Predicate<Product> isPremium = product -> product.rating() >= EngineConstants.Thresholds.HIGH_RATING
+            && product.price() >= EngineConstants.Thresholds.PREMIUM_MIN_PRICE
+            && !EngineConstants.Categories.GROCERY.equals(product.category());
 
 
     public List<ProductSummaryDTO> productSummaryDTOList(List<Product> productList){
@@ -41,7 +52,7 @@ public class OptimizedProductService {
                 .parallelStream()
                 .filter(productPredicate)
                 .sorted(productComparator)
-                .limit(5)
+                .limit(EngineConstants.Limits.SUMMARY_PRODUCT_COUNT)
                 .map(product -> new ProductSummaryDTO(product.productId(),product.productName(),product.category()
                         ,product.price(), product.rating(), product.addedDate().getMonth(),product.productTags().size()))
                 .toList();
@@ -101,7 +112,7 @@ public class OptimizedProductService {
                         Comparator.comparing(Product::rating).reversed()
                                 .thenComparing(Product::price)
                 )
-                .limit(3)
+                .limit(EngineConstants.Limits.TOP_RATED_PRODUCT_COUNT)
                 .map(p -> new ProductSummaryDTO(
                         p.productId(),
                         p.productName(),
@@ -181,6 +192,75 @@ public class OptimizedProductService {
                 .stream()
                 .collect(productStatsCollector());
     }
+
+    //Day 6
+    public void printDetails(String productId) {
+         fetchDetailsWithTimeout(productId)
+        .thenApply(product ->new Product(product.productId(), product.productName().toUpperCase(),product.category(),
+                product.price(),product.rating(),product.addedDate(),product.productTags()))
+                .thenAccept(product-> System.out.println("Returning Product for productId: "+productId+" Product is" + product))
+                .join(); // waits for result
+    }
+
+    public Product getDetails(String productId) {
+        return fetchDetailsWithTimeout(productId)
+                .thenApply(product ->new Product(product.productId(), product.productName().toUpperCase(),product.category(),
+                        product.price(),product.rating(),product.addedDate(),product.productTags()))
+                .join(); // waits for result
+    }
+
+
+    public CompletableFuture<Product> fetchDetailsWithTimeout(String productId) {
+        return CompletableFuture.supplyAsync(() -> ExternalProductService.fetchDetails(EngineConstants.Async.FIXED_THREAD_POOL_SIZE))
+                .orTimeout(EngineConstants.Async.FETCH_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)
+                .exceptionally(ex -> new Product(0, EngineConstants.Categories.TIMEOUT, EngineConstants.Categories.TIMEOUT,
+                        EngineConstants.Thresholds.MIN_VALID_VALUE, EngineConstants.Thresholds.MIN_VALID_VALUE,
+                        LocalDate.now(), List.of()));
+    }
+
+    public Product getHighestRatingProductDetails(String productId) {
+        return fetchDetailsWithTimeoutAndCombine(productId)
+                .thenApply(product ->new Product(product.productId(), product.productName().toUpperCase(),product.category(),
+                        product.price(),product.rating(),product.addedDate(),product.productTags()))
+                .join(); // waits for result
+    }
+
+    public CompletableFuture<Product> fetchDetailsWithTimeoutAndCombine(String productId) {
+        CompletableFuture<Product> p1 = CompletableFuture.supplyAsync(() -> ExternalProductService.fetchDetails(EngineConstants.Async.FIXED_THREAD_POOL_SIZE));
+        CompletableFuture<Product> p2 = CompletableFuture.supplyAsync(() -> ExternalProductService.fetchProductDetails(EngineConstants.Async.FIXED_THREAD_POOL_SIZE));
+        return p1
+        .exceptionally(ex -> new Product(0, EngineConstants.Categories.TIMEOUT, EngineConstants.Categories.TIMEOUT,
+                EngineConstants.Thresholds.MIN_VALID_VALUE, EngineConstants.Thresholds.MIN_VALID_VALUE,
+                LocalDate.now(), List.of()))
+                .thenCombine(p2,(p,s)->{
+                   return p.rating()>s.rating()? p : s;
+                })
+                .orTimeout(EngineConstants.Async.FETCH_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)
+                .exceptionally(ex -> new Product(0, EngineConstants.Categories.TIMEOUT, EngineConstants.Categories.TIMEOUT,
+                        EngineConstants.Thresholds.MIN_VALID_VALUE, EngineConstants.Thresholds.MIN_VALID_VALUE,
+                        LocalDate.now(), List.of()));
+    }
+
+    public Product getHighestRatingProductDetailsWithCompose(String productId) {
+        return fetchDetailsWithTimeoutAndCompose(productId)
+                .thenApply(product ->new Product(product.productId(), product.productName().toUpperCase(),product.category(),
+                        product.price(),product.rating(),product.addedDate(),product.productTags()))
+                .join(); // waits for result
+    }
+
+    //use then compose when a function returns Completable Future
+    public CompletableFuture<Product> fetchDetailsWithTimeoutAndCompose(String productId) {
+     return CompletableFuture.supplyAsync(() -> ExternalProductService.fetchDetails(EngineConstants.Async.FIXED_THREAD_POOL_SIZE))
+             .exceptionally(ex -> new Product(0, EngineConstants.Categories.TIMEOUT, EngineConstants.Categories.TIMEOUT,
+                     EngineConstants.Thresholds.MIN_VALID_VALUE, EngineConstants.Thresholds.MIN_VALID_VALUE,
+                     LocalDate.now(), List.of()))
+        .thenCompose(previous ->ExternalProductService.fetchCompletableProductDetails(previous.productId()))
+                .orTimeout(EngineConstants.Async.FETCH_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)
+                .exceptionally(ex -> new Product(0, EngineConstants.Categories.TIMEOUT, EngineConstants.Categories.TIMEOUT,
+                        EngineConstants.Thresholds.MIN_VALID_VALUE, EngineConstants.Thresholds.MIN_VALID_VALUE,
+                        LocalDate.now(), List.of()));
+    }
+
 
 
 }

@@ -1,9 +1,9 @@
 package com.reshwanth.engine.service;
 
-import com.reshwanth.engine.DTO.CategoryPriceStats;
-import com.reshwanth.engine.DTO.EnrichedProductDTO;
-import com.reshwanth.engine.DTO.ProductDashboardSummary;
-import com.reshwanth.engine.DTO.ProductSummaryDTO;
+import com.reshwanth.engine.dto.CategoryPriceStats;
+import com.reshwanth.engine.dto.EnrichedProductDTO;
+import com.reshwanth.engine.dto.ProductDashboardSummary;
+import com.reshwanth.engine.dto.ProductSummaryDTO;
 import com.reshwanth.engine.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

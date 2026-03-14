@@ -1,10 +1,11 @@
 package com.reshwanth.engine.service;
 
-import com.reshwanth.engine.DTO.CategoryPriceStats;
-import com.reshwanth.engine.DTO.EnrichedProductDTO;
-import com.reshwanth.engine.DTO.ProductDashboardSummary;
-import com.reshwanth.engine.DTO.ProductSummaryDTO;
+import com.reshwanth.engine.dto.CategoryPriceStats;
+import com.reshwanth.engine.dto.EnrichedProductDTO;
+import com.reshwanth.engine.dto.ProductDashboardSummary;
+import com.reshwanth.engine.dto.ProductSummaryDTO;
 import com.reshwanth.engine.model.*;
+import com.reshwanth.engine.util.EngineConstants;
 
 import java.util.*;
 import java.util.function.Function;
@@ -69,7 +70,7 @@ public class ProductAnalyticsService {
        return Optional.ofNullable(productsList)
                 .orElseGet(Collections::emptyList)
                 .stream()
-                .filter(p -> p.price() > 0)
+                .filter(p -> p.price() > EngineConstants.Thresholds.MIN_VALID_VALUE)
                 .max(Comparator.comparingDouble((Product p) -> p.rating() / p.price())
                         .thenComparing(Product::addedDate));
 
@@ -81,7 +82,7 @@ public class ProductAnalyticsService {
                 .stream()
                 .sorted(Comparator.comparing(Product::rating).reversed()
                         .thenComparing(Product::price))
-                .limit(3)
+                .limit(EngineConstants.Limits.TOP_RATED_PRODUCT_COUNT)
                 .collect(Collectors.toList());
     }
 
@@ -162,7 +163,7 @@ public class ProductAnalyticsService {
         return Optional.ofNullable(productList)
                 .orElseGet(Collections::emptyList)
                 .stream()
-                .collect(Collectors.partitioningBy(product -> product.rating()>= 4.5));
+                .collect(Collectors.partitioningBy(product -> product.rating() >= EngineConstants.Thresholds.HIGH_RATING));
     }
 
     public Map<String, Map<String, List<Product>>> groupProductsByCategoryAndPriceRange(List<Product> productList) {
@@ -172,9 +173,9 @@ public class ProductAnalyticsService {
                 .collect(Collectors.groupingBy(Product::category
                         , Collectors.groupingBy(product ->
                                 {
-                                    if(product.price() < 200) return "LOW";
-                                    if(product.price() < 500) return "MEDIUM";
-                                    return "HIGH";
+                                    if (product.price() < EngineConstants.PriceBuckets.LOW_PRICE_UPPER_BOUND) return EngineConstants.PriceBuckets.LOW;
+                                    if (product.price() < EngineConstants.PriceBuckets.MEDIUM_PRICE_UPPER_BOUND) return EngineConstants.PriceBuckets.MEDIUM;
+                                    return EngineConstants.PriceBuckets.HIGH;
                                 }
                                 )));
     }
@@ -218,9 +219,9 @@ public class ProductAnalyticsService {
         return Optional.ofNullable(productList)
                 .orElseGet(Collections::emptyList)
                 .stream()
-                .filter(product -> product.category().equals("Electronics"))
-                .filter(product -> product.price()<=500.0)
-                .filter(product -> product.rating()>=4.5)
+                .filter(product -> EngineConstants.Categories.ELECTRONICS.equals(product.category()))
+                .filter(product -> product.price() <= EngineConstants.Thresholds.HIGH_PRICE)
+                .filter(product -> product.rating() >= EngineConstants.Thresholds.HIGH_RATING)
                 .findFirst();
     }
 
@@ -246,15 +247,15 @@ public class ProductAnalyticsService {
         return Optional.ofNullable(productList)
                 .orElseGet(Collections::emptyList)
                 .stream()
-                .filter(product -> product.price() >= 100)
-                .filter(product -> product.rating() >= 4.0)
-                .filter(product -> !"Grocery".equals(product.category()))
+                .filter(product -> product.price() >= EngineConstants.Thresholds.SUMMARY_MIN_PRICE)
+                .filter(product -> product.rating() >= EngineConstants.Thresholds.SUMMARY_MIN_RATING)
+                .filter(product -> !EngineConstants.Categories.GROCERY.equals(product.category()))
                 .filter(product -> product.productTags() != null && !product.productTags().isEmpty())
                 .filter(product -> product.addedDate() != null)
                 .sorted(Comparator.comparing(Product::rating).reversed()
                         .thenComparing(Product::price)
                         .thenComparing(Product::productName))
-                .limit(5)
+                .limit(EngineConstants.Limits.SUMMARY_PRODUCT_COUNT)
                 .map(product -> new ProductSummaryDTO(product.productId(),product.productName(),product.category()
                 ,product.price(), product.rating(), product.addedDate().getMonth(),product.productTags().size()))
                 .toList();
@@ -265,7 +266,7 @@ public class ProductAnalyticsService {
                 .orElseGet(Collections::emptyList)
                 .stream()
                 .filter(product -> product.category() != null && !product.category().isEmpty())
-                .filter(product -> product.price()>=0)
+                .filter(product -> product.price() >= EngineConstants.Thresholds.MIN_VALID_VALUE)
                 .filter(product -> product.addedDate() != null)
                 .collect(Collectors.collectingAndThen(Collectors.groupingBy(
                         Product::category,
@@ -299,20 +300,22 @@ public class ProductAnalyticsService {
 
     public List<EnrichedProductDTO> enrichedProductDTOList(List<Product> productList){
 
-        Predicate<Product> isElectronics = p -> "Electronics".equals(p.category());
-        Predicate<Product> isHighRating = p -> p.rating() >= 4.5;
-        Predicate<Product> isPremium = p -> p.rating() >= 4.5 && p.price() >= 300 && !"Grocery".equals(p.category());
-        Predicate<Product> isHighPrice = p -> p.price() >= 500;
+        Predicate<Product> isElectronics = p -> EngineConstants.Categories.ELECTRONICS.equals(p.category());
+        Predicate<Product> isHighRating = p -> p.rating() >= EngineConstants.Thresholds.HIGH_RATING;
+        Predicate<Product> isPremium = p -> p.rating() >= EngineConstants.Thresholds.HIGH_RATING
+                && p.price() >= EngineConstants.Thresholds.PREMIUM_MIN_PRICE
+                && !EngineConstants.Categories.GROCERY.equals(p.category());
+        Predicate<Product> isHighPrice = p -> p.price() >= EngineConstants.Thresholds.HIGH_PRICE;
 
         Function<Product, Double> discountedPriceFn = p -> {
             boolean electronicsDiscount = isElectronics.and(isHighPrice).test(p);
             boolean ratingDiscount = isHighRating.test(p);
 
             if (electronicsDiscount) {
-                return p.price() - (p.price() * 10 / 100);
+                return p.price() - (p.price() * EngineConstants.Thresholds.ELECTRONICS_DISCOUNT_PERCENT / 100);
             }
             if (ratingDiscount) {
-                return p.price() - (p.price() * 5 / 100);
+                return p.price() - (p.price() * EngineConstants.Thresholds.RATING_DISCOUNT_PERCENT / 100);
             }
             return p.price();
         };
@@ -321,8 +324,8 @@ public class ProductAnalyticsService {
                 .orElseGet(Collections::emptyList)
                 .stream()
                 .filter(p -> p.productName() != null && !p.productName().isEmpty())
-                .filter(p -> p.price() >= 0)
-                .filter(p -> p.rating() >= 0)
+                .filter(p -> p.price() >= EngineConstants.Thresholds.MIN_VALID_VALUE)
+                .filter(p -> p.rating() >= EngineConstants.Thresholds.MIN_VALID_VALUE)
                 .filter(p -> p.addedDate() != null)
                 .filter(p -> p.productTags() != null && !p.productTags().isEmpty())
                 .map(p -> new EnrichedProductDTO(
@@ -366,14 +369,16 @@ public class ProductAnalyticsService {
                 .stream()
                 .sorted(Comparator.comparing(Product::rating).reversed()
                         .thenComparing(Product::price))
-                .limit(3)
+                .limit(EngineConstants.Limits.TOP_RATED_PRODUCT_COUNT)
                 .map(product -> new ProductSummaryDTO(product.productId(),product.productName(),product.category()
                         ,product.price(), product.rating(), product.addedDate().getMonth(),product.productTags().size()))
                 .toList();
 
         long premiumProductCount = filteredList
                 .stream()
-                .filter(product -> product.rating()>= 4.5 && product.price()>=300 && !"Grocery".equals(product.category()))
+                .filter(product -> product.rating() >= EngineConstants.Thresholds.HIGH_RATING
+                        && product.price() >= EngineConstants.Thresholds.PREMIUM_MIN_PRICE
+                        && !EngineConstants.Categories.GROCERY.equals(product.category()))
                 .count();
         String mostCommonCategory = categoryCounts.isEmpty() ? null : categoryCounts.entrySet()
                 .stream()
@@ -390,8 +395,8 @@ public class ProductAnalyticsService {
                 .orElseGet(Collections::emptyList)
                 .stream()
                 .filter(p -> p.productName() != null && !p.productName().isEmpty())
-                .filter(p -> p.price() >= 0)
-                .filter(p -> p.rating() >= 0)
+                .filter(p -> p.price() >= EngineConstants.Thresholds.MIN_VALID_VALUE)
+                .filter(p -> p.rating() >= EngineConstants.Thresholds.MIN_VALID_VALUE)
                 .filter(p -> p.addedDate() != null)
                 .filter(p -> p.productTags() != null && !p.productTags().isEmpty())
                 .toList();
@@ -400,9 +405,9 @@ public class ProductAnalyticsService {
     public static String priceCategory(Product product) {
         return Optional.ofNullable(product)
                 .map(p -> {
-                    if (p.price() < 200) return "LOW";
-                    if (p.price() <= 500) return "MEDIUM";
-                    return "HIGH";
+                    if (p.price() < EngineConstants.PriceBuckets.LOW_PRICE_UPPER_BOUND) return EngineConstants.PriceBuckets.LOW;
+                    if (p.price() <= EngineConstants.PriceBuckets.MEDIUM_PRICE_UPPER_BOUND) return EngineConstants.PriceBuckets.MEDIUM;
+                    return EngineConstants.PriceBuckets.HIGH;
                 })
                 .orElse(null);
     }
