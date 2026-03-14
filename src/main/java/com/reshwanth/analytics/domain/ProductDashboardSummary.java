@@ -1,4 +1,6 @@
-package com.reshwanth.engine.dto;
+package com.reshwanth.analytics.domain;
+
+import com.reshwanth.analytics.dto.ProductSummaryDTO;
 
 import java.util.List;
 import java.util.Map;

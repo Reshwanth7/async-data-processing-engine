@@ -1,6 +1,6 @@
-package com.reshwanth.engine.util;
+package com.reshwanth.analytics.util;
 
-import com.reshwanth.engine.model.Product;
+import com.reshwanth.analytics.domain.Product;
 
 import java.time.LocalDate;
 import java.util.List;

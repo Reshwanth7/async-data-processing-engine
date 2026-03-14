@@ -1,11 +1,11 @@
-package com.reshwanth.engine.service;
+package com.reshwanth.analytics.service;
 
-import com.reshwanth.engine.dto.CategoryPriceStats;
-import com.reshwanth.engine.dto.EnrichedProductDTO;
-import com.reshwanth.engine.dto.ProductDashboardSummary;
-import com.reshwanth.engine.dto.ProductSummaryDTO;
-import com.reshwanth.engine.model.*;
-import com.reshwanth.engine.util.EngineConstants;
+import com.reshwanth.analytics.domain.CategoryPriceStats;
+import com.reshwanth.analytics.dto.EnrichedProductDTO;
+import com.reshwanth.analytics.domain.ProductDashboardSummary;
+import com.reshwanth.analytics.dto.ProductSummaryDTO;
+import com.reshwanth.analytics.domain.*;
+import com.reshwanth.analytics.util.EngineConstants;
 
 import java.util.*;
 import java.util.function.Function;

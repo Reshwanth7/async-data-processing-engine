@@ -1,4 +1,6 @@
-package com.reshwanth.engine.dto;
+package com.reshwanth.analytics.domain;
+
+import com.reshwanth.analytics.dto.ProductSummaryDTO;
 
 public record ProductAggregateStats(
         long totalProducts,

@@ -1,11 +1,13 @@
-package com.reshwanth.engine.service;
+package com.reshwanth.analytics.async;
 
-import com.reshwanth.engine.dto.CategoryPriceStats;
-import com.reshwanth.engine.dto.ProductAggregateStats;
-import com.reshwanth.engine.dto.ProductDashboardSummary;
-import com.reshwanth.engine.dto.ProductSummaryDTO;
-import com.reshwanth.engine.model.Product;
-import com.reshwanth.engine.util.EngineConstants;
+import com.reshwanth.analytics.domain.CategoryPriceStats;
+import com.reshwanth.analytics.domain.ProductAggregateStats;
+import com.reshwanth.analytics.domain.ProductDashboardSummary;
+import com.reshwanth.analytics.dto.ProductSummaryDTO;
+import com.reshwanth.analytics.domain.Product;
+import com.reshwanth.analytics.external.ExternalProductService;
+import com.reshwanth.analytics.service.ProductAnalyticsService;
+import com.reshwanth.analytics.util.EngineConstants;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -15,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static com.reshwanth.engine.util.ProductAnalyticsAccumulator.productStatsCollector;
+import static com.reshwanth.analytics.util.ProductAnalyticsAccumulator.productStatsCollector;
 
 public class OptimizedProductService {
     //Day 5

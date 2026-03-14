@@ -1,4 +1,4 @@
-package com.reshwanth.engine.util;
+package com.reshwanth.analytics.util;
 
 import java.util.List;
 

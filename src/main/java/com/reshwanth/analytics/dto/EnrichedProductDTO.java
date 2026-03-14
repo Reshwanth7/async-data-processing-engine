@@ -1,4 +1,4 @@
-package com.reshwanth.engine.dto;
+package com.reshwanth.analytics.dto;
 
 import java.time.Month;
 

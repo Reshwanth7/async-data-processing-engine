@@ -1,10 +1,11 @@
-package com.reshwanth.engine.service;
+package com.reshwanth.analytics.service;
 
-import com.reshwanth.engine.dto.CategoryPriceStats;
-import com.reshwanth.engine.dto.EnrichedProductDTO;
-import com.reshwanth.engine.dto.ProductDashboardSummary;
-import com.reshwanth.engine.dto.ProductSummaryDTO;
-import com.reshwanth.engine.model.*;
+import com.reshwanth.analytics.async.OptimizedProductService;
+import com.reshwanth.analytics.domain.CategoryPriceStats;
+import com.reshwanth.analytics.dto.EnrichedProductDTO;
+import com.reshwanth.analytics.domain.ProductDashboardSummary;
+import com.reshwanth.analytics.dto.ProductSummaryDTO;
+import com.reshwanth.analytics.domain.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

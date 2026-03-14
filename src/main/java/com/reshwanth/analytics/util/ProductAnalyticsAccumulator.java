@@ -1,9 +1,9 @@
-package com.reshwanth.engine.util;
+package com.reshwanth.analytics.util;
 
-import com.reshwanth.engine.dto.ProductAggregateStats;
-import com.reshwanth.engine.dto.ProductSummaryDTO;
-import com.reshwanth.engine.model.Product;
-import com.reshwanth.engine.service.OptimizedProductService;
+import com.reshwanth.analytics.domain.ProductAggregateStats;
+import com.reshwanth.analytics.dto.ProductSummaryDTO;
+import com.reshwanth.analytics.domain.Product;
+import com.reshwanth.analytics.async.OptimizedProductService;
 
 import java.util.stream.Collector;
 

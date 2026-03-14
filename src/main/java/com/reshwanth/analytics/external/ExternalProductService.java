@@ -1,7 +1,9 @@
-package com.reshwanth.engine.service;
+package com.reshwanth.analytics.external;
 
-import com.reshwanth.engine.model.Product;
-import com.reshwanth.engine.util.EngineConstants;
+import com.reshwanth.analytics.dto.AnalyticsData;
+import com.reshwanth.analytics.dto.EnrichmentData;
+import com.reshwanth.analytics.domain.Product;
+import com.reshwanth.analytics.util.EngineConstants;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -83,5 +85,31 @@ public class ExternalProductService {
 
     private static void sleep(long ms) {
         try { Thread.sleep(ms); } catch (Exception ignored) {}
+    }
+
+    public static Product transformProduct(Product p) {
+        return new Product(
+                p.productId(),
+                p.productName().toUpperCase(),
+                p.category().trim(),
+                p.price(),
+                p.rating(),
+                p.addedDate(),
+                p.productTags().stream().sorted().toList()
+        );
+    }
+
+    public static AnalyticsData computeAnalytics(Product p, EnrichmentData e) {
+        double popularityScore = e.rating() * e.tags().size();
+        double qualityIndex = (e.rating() + p.rating()) / 2.0;
+        double weightedRating = (e.rating() * 0.7) + (p.rating() * 0.3);
+        double priceValueRatio = (e.price() == 0.0) ? 0.0 : weightedRating / e.price();
+
+        return new AnalyticsData(
+                popularityScore,
+                qualityIndex,
+                weightedRating,
+                priceValueRatio
+        );
     }
 }

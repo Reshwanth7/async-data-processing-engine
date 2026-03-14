@@ -1,4 +1,4 @@
-package com.reshwanth.engine.model;
+package com.reshwanth.analytics.domain;
 
 import java.time.LocalDate;
 import java.util.List;
